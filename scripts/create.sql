@@ -2,9 +2,13 @@
 * Отдел продаж "Cахалин"
 */
 
+CREATE DATABASE lab;
+
 BEGIN;
 
-CREATE TABLE "bank/e1" (
+SET search_path TO test1;
+
+CREATE TABLE "bank" (
   id SERIAL PRIMARY KEY,
   license_number CHAR(20) NOT NULL UNIQUE,
   name VARCHAR(60) NOT NULL,
@@ -15,14 +19,14 @@ CREATE TABLE "bank/e1" (
 CREATE TYPE BUYER_TYPE AS ENUM ('магазин', 'оптовик',
   'предприятие сферы обслуживания');
 
-CREATE TABLE "buyer/e2" (
+CREATE TABLE "buyer" (
   id SERIAL PRIMARY KEY,
   name VARCHAR(20) NOT NULL UNIQUE, -- AK
   country VARCHAR(60) NOT NULL,
   legal_address TEXT NOT NULL
 );
 
-CREATE TABLE "currency/e4" (
+CREATE TABLE "currency" (
   currency_id CHAR(3) NOT NULL PRIMARY KEY,
   name VARCHAR(20) NOT NULL UNIQUE, -- AK
   comment TEXT NULL
@@ -31,44 +35,45 @@ CREATE TABLE "currency/e4" (
 CREATE TYPE BANK_ACCOUNT_TYPE AS ENUM ('коререспондетский', 'депозитный',
   'сберегательный');
 
-CREATE TABLE "bank_account/e3" (
+CREATE TABLE "bank_account" (
   id SERIAL PRIMARY KEY,
   bank_id INTEGER NOT NULL, -- FK
   holder_id INTEGER NOT NULL, -- FK
   category BANK_ACCOUNT_TYPE NOT NULL,
   currency_id CHAR(3) NOT NULL, -- FK
 
-  CONSTRAINT bank_id FOREIGN KEY (bank_id) REFERENCES "bank/e1"(id)
+  CONSTRAINT bank_id FOREIGN KEY (bank_id) REFERENCES "bank"(id)
     ON UPDATE CASCADE
-    ON DELETE CASCADE,
+    ON DELETE NO ACTION,
 
-  CONSTRAINT holder_id FOREIGN KEY (holder_id) REFERENCES "buyer/e2"(id)
+  CONSTRAINT holder_id FOREIGN KEY (holder_id) REFERENCES "buyer"(id)
     ON UPDATE CASCADE
-    ON DELETE CASCADE,
+    ON DELETE NO ACTION,
 
-  CONSTRAINT currency_id FOREIGN KEY (currency_id) REFERENCES "currency/e4"(currency_id)
+  CONSTRAINT currency_id FOREIGN KEY (currency_id) REFERENCES "currency"(currency_id)
     ON UPDATE CASCADE
-    ON DELETE CASCADE
+    ON DELETE NO ACTION
 );
 
-CREATE TABLE "exchange_rate/e5" (
+CREATE TABLE "exchange_rate" (
   numerator CHAR(3) NOT NULL, --FK
   denominator CHAR(3) NOT NULL, --FK
   created_at TIMESTAMP NOT NULL DEFAULT now(),
   value DECIMAL(6,2) NOT NULL,
 
   CHECK (value > 0),
+  CHECK (numerator != denominator),
 
-  CONSTRAINT numerator FOREIGN KEY (numerator) REFERENCES "currency/e4"(currency_id)
+  CONSTRAINT numerator FOREIGN KEY (numerator) REFERENCES "currency"(currency_id)
     ON UPDATE CASCADE
-    ON DELETE CASCADE,
+    ON DELETE NO ACTION,
 
-  CONSTRAINT denominator FOREIGN KEY (denominator) REFERENCES "currency/e4"(currency_id)
+  CONSTRAINT denominator FOREIGN KEY (denominator) REFERENCES "currency"(currency_id)
     ON UPDATE CASCADE
-    ON DELETE CASCADE
+    ON DELETE NO ACTION
 );
 
-CREATE TABLE "payment_order/e6" (
+CREATE TABLE "payment_order" ( -- E6
   id SERIAL PRIMARY KEY,
   order_id CHAR(20) NOT NULL UNIQUE,
   sum DECIMAL(20) NOT NULL,
@@ -78,21 +83,22 @@ CREATE TABLE "payment_order/e6" (
   created_at TIMESTAMP NOT NULL,
 
   CHECK (sum > 0),
+  CHECK (sender != destination),
 
-  CONSTRAINT sender FOREIGN KEY (sender) REFERENCES "bank_account/e3"(id)
+  CONSTRAINT sender FOREIGN KEY (sender) REFERENCES "bank_account"(id)
     ON UPDATE CASCADE
-    ON DELETE CASCADE,
+    ON DELETE NO ACTION,
 
-  CONSTRAINT destination FOREIGN KEY (destination) REFERENCES "bank_account/e3"(id)
+  CONSTRAINT destination FOREIGN KEY (destination) REFERENCES "bank_account"(id)
     ON UPDATE CASCADE
-    ON DELETE CASCADE,
+    ON DELETE NO ACTION,
 
-  CONSTRAINT currency_id FOREIGN KEY (currency_id) REFERENCES "currency/e4"(currency_id)
+  CONSTRAINT currency_id FOREIGN KEY (currency_id) REFERENCES "currency"(currency_id)
     ON UPDATE CASCADE
-    ON DELETE CASCADE
+    ON DELETE NO ACTION
 );
 
-CREATE TABLE "product/e7" (
+CREATE TABLE "product" (
   id SERIAL PRIMARY KEY,
   article CHAR(20) NOT NULL UNIQUE, -- AK
   available_amount INTEGER NOT NULL,
@@ -103,16 +109,16 @@ CREATE TABLE "product/e7" (
   price DECIMAL(9) NOT NULL,
   currency_id CHAR(3) NOT NULL, -- FK
 
-  CHECK (available_amount > 0),
+  CHECK (available_amount >= 0),
   CHECK (price > 0),
 
-  CONSTRAINT currency_id FOREIGN KEY (currency_id) REFERENCES "currency/e4"(currency_id)
+  CONSTRAINT currency_id FOREIGN KEY (currency_id) REFERENCES "currency"(currency_id)
     ON UPDATE CASCADE
-    ON DELETE CASCADE
+    ON DELETE NO ACTION
 );
 
 
-CREATE TABLE "invoice/e8" (
+CREATE TABLE "invoice" (
   id SERIAL PRIMARY KEY,
   buyer_id INTEGER NOT NULL, -- FK
   local_order_id INTEGER NULL, --FK
@@ -122,25 +128,27 @@ CREATE TABLE "invoice/e8" (
   sum DECIMAL(20) NOT NULL,
 
   CHECK (sum > 0),
+  CHECK (payed_at >= created_at),
 
-  CONSTRAINT buyer_id FOREIGN KEY (buyer_id) REFERENCES "buyer/e2"(id)
+  CONSTRAINT buyer_id FOREIGN KEY (buyer_id) REFERENCES "buyer"(id)
     ON UPDATE CASCADE
-    ON DELETE CASCADE,
+    ON DELETE NO ACTION,
 
-  CONSTRAINT local_order_id FOREIGN KEY (local_order_id) REFERENCES "payment_order/e6"(id)
+  CONSTRAINT local_order_id FOREIGN KEY (local_order_id) REFERENCES "payment_order"(id)
     ON UPDATE CASCADE
-    ON DELETE CASCADE,
+    ON DELETE NO ACTION,
 
-  CONSTRAINT currency_id FOREIGN KEY (currency_id) REFERENCES "currency/e4"(currency_id)
+  CONSTRAINT currency_id FOREIGN KEY (currency_id) REFERENCES "currency"(currency_id)
     ON UPDATE CASCADE
-    ON DELETE CASCADE
+    ON DELETE NO ACTION
 );
 
-CREATE TABLE "invoice/e8 product/e7" (
-  invoice_id INTEGER REFERENCES "invoice/e8"(id),
-  product_id INTEGER REFERENCES "product/e7"(id),
+CREATE TABLE "invoice_product" (
+  invoice_id INTEGER REFERENCES "invoice"(id),
+  product_id INTEGER REFERENCES "product"(id),
   quantity INTEGER NOT NULL,
   PRIMARY KEY (invoice_id, product_id)
 );
 
 ROLLBACK;
+-- COMMIT;
