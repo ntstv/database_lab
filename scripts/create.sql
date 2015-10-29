@@ -21,7 +21,8 @@ CREATE TYPE BUYER_TYPE AS ENUM ('магазин', 'оптовик',
 
 CREATE TABLE "buyer" (
   id SERIAL PRIMARY KEY,
-  name VARCHAR(20) NOT NULL UNIQUE, -- AK
+  name VARCHAR(60) NOT NULL,
+  license_number VARCHAR(20) NOT NULL UNIQUE, -- AK
   country VARCHAR(60) NOT NULL,
   legal_address TEXT NOT NULL
 );
@@ -29,6 +30,7 @@ CREATE TABLE "buyer" (
 CREATE TABLE "currency" (
   currency_id CHAR(3) NOT NULL PRIMARY KEY,
   name VARCHAR(20) NOT NULL UNIQUE, -- AK
+  country VARCHAR(60) NOT NULL,
   comment TEXT NULL
 );
 
@@ -64,6 +66,8 @@ CREATE TABLE "exchange_rate" (
   CHECK (value > 0),
   CHECK (numerator != denominator),
 
+  CONSTRAINT composite_key PRIMARY KEY (numerator, denominator, created_at),
+
   CONSTRAINT numerator FOREIGN KEY (numerator) REFERENCES "currency"(currency_id)
     ON UPDATE CASCADE
     ON DELETE NO ACTION,
@@ -81,6 +85,7 @@ CREATE TABLE "payment_order" ( -- E6
   destination INTEGER NOT NULL, -- FK
   currency_id CHAR(3) NOT NULL, -- FK
   created_at TIMESTAMP NOT NULL,
+  invoice_id INTEGER NOT NULL
 
   CHECK (sum > 0),
   CHECK (sender != destination),
@@ -96,9 +101,13 @@ CREATE TABLE "payment_order" ( -- E6
   CONSTRAINT currency_id FOREIGN KEY (currency_id) REFERENCES "currency"(currency_id)
     ON UPDATE CASCADE
     ON DELETE NO ACTION
+
+  CONSTRAINT invoice_id FOREIGN KEY (invoice_id) REFERENCES "invoice"(invoice_id)
+    ON UPDATE CASCADE
+    ON DELETE NO ACTION
 );
 
-CREATE TABLE "product" (
+CREATE TABLE "product" ( -- E7
   id SERIAL PRIMARY KEY,
   article CHAR(20) NOT NULL UNIQUE, -- AK
   available_amount INTEGER NOT NULL,
@@ -118,10 +127,10 @@ CREATE TABLE "product" (
 );
 
 
-CREATE TABLE "invoice" (
+CREATE TABLE "invoice" ( --E8
   id SERIAL PRIMARY KEY,
   buyer_id INTEGER NOT NULL, -- FK
-  local_order_id INTEGER NULL, --FK
+  local_order_id INTEGER NULL
   currency_id CHAR(3) NOT NULL, -- FK
   created_at TIMESTAMP NOT NULL DEFAULT now(),
   payed_at TIMESTAMP NULL,
@@ -134,16 +143,16 @@ CREATE TABLE "invoice" (
     ON UPDATE CASCADE
     ON DELETE NO ACTION,
 
-  CONSTRAINT local_order_id FOREIGN KEY (local_order_id) REFERENCES "payment_order"(id)
-    ON UPDATE CASCADE
-    ON DELETE NO ACTION,
+  --CONSTRAINT local_order_id FOREIGN KEY (local_order_id) REFERENCES "payment_order"(id)
+  --  ON UPDATE CASCADE
+  --  ON DELETE NO ACTION,
 
   CONSTRAINT currency_id FOREIGN KEY (currency_id) REFERENCES "currency"(currency_id)
     ON UPDATE CASCADE
     ON DELETE NO ACTION
 );
 
-CREATE TABLE "invoice_product" (
+CREATE TABLE "invoice_product" ( --E8/E9
   invoice_id INTEGER REFERENCES "invoice"(id),
   product_id INTEGER REFERENCES "product"(id),
   quantity INTEGER NOT NULL,
