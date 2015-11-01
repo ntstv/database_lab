@@ -84,8 +84,8 @@ CREATE TABLE "payment_order" ( -- E6
   sender INTEGER NOT NULL, -- FK
   destination INTEGER NOT NULL, -- FK
   currency_id CHAR(3) NOT NULL, -- FK
-  created_at TIMESTAMP NOT NULL,
-  invoice_id INTEGER NOT NULL
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  invoice_id INTEGER NULL
 
   CHECK (sum > 0),
   CHECK (sender != destination),
@@ -130,22 +130,16 @@ CREATE TABLE "product" ( -- E7
 CREATE TABLE "invoice" ( --E8
   id SERIAL PRIMARY KEY,
   buyer_id INTEGER NOT NULL, -- FK
-  local_order_id INTEGER NULL
   currency_id CHAR(3) NOT NULL, -- FK
   created_at TIMESTAMP NOT NULL DEFAULT now(),
-  payed_at TIMESTAMP NULL,
   sum DECIMAL(20) NOT NULL,
 
   CHECK (sum > 0),
-  CHECK (payed_at >= created_at),
 
   CONSTRAINT buyer_id FOREIGN KEY (buyer_id) REFERENCES "buyer"(id)
     ON UPDATE CASCADE
     ON DELETE NO ACTION,
 
-  --CONSTRAINT local_order_id FOREIGN KEY (local_order_id) REFERENCES "payment_order"(id)
-  --  ON UPDATE CASCADE
-  --  ON DELETE NO ACTION,
 
   CONSTRAINT currency_id FOREIGN KEY (currency_id) REFERENCES "currency"(currency_id)
     ON UPDATE CASCADE
