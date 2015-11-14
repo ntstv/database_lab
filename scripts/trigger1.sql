@@ -18,11 +18,20 @@ DECLARE
     exchange_rate DECIMAL(6,2);
     invoice_row "invoice"%ROWTYPE;
     exchange_rate_row "exchange_rate"%ROWTYPE;
+    payment_order_row "payment_order"%ROWTYPE;
+    count INTEGER;
 BEGIN
   -- NEW is "payment_order" row
   IF NEW.invoice_id is NULL THEN
     RETURN NEW;
   END IF;
+  BEGIN
+    SELECT count(id) INTO STRICT count FROM "payment_order"
+    WHERE invoice_id = NEW.invoice_id;
+    IF count >= 1 THEN
+      RAISE EXCEPTION 'invoice already payed';
+    END IF;
+  END;
   BEGIN
     SELECT * INTO STRICT invoice_row FROM "invoice" WHERE id = NEW.invoice_id;
     EXCEPTION
@@ -35,7 +44,7 @@ BEGIN
     IF invoice_row.sum <= NEW.sum THEN
       RETURN NEW;
     ELSE
-      RAISE EXCEPTION 'not enugh sum';
+      RAISE EXCEPTION 'not enough sum';
     END IF;
   ELSE
     BEGIN
@@ -56,14 +65,14 @@ BEGIN
     IF invoice_row.sum <= translated_sum THEN
       RETURN NEW;
     ELSE
-      RAISE EXCEPTION 'not enugh sum';
+      RAISE EXCEPTION 'not enough sum';
     END IF;
   END IF;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER check_payment_order BEFORE UPDATE OR INSERT ON "payment_order"
-  FOR EACH ROW
-  EXECUTE PROCEDURE check_payment_order_func();
+-- CREATE TRIGGER check_payment_order BEFORE UPDATE OR INSERT ON "payment_order"
+--   FOR EACH ROW
+--   EXECUTE PROCEDURE check_payment_order_func();
 
 COMMIT;
