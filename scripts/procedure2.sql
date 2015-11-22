@@ -63,13 +63,13 @@ DECLARE
   new_invoice_product BOOLEAN;
   new_sum DECIMAL(20, 2);
   new_currency CHAR(3);
-  new_invoice_id INTEGER;
   invoice_id INTEGER;
 BEGIN
   IF par_quantity <= 0 THEN
      RAISE EXCEPTION 'par_quantity should be greater then zero';
   END IF;
   new_invoice := FALSE;
+  invoice_id := NULL;
   IF opt_invoice_id IS NULL THEN
     new_invoice := TRUE;
   ELSE
@@ -79,7 +79,9 @@ BEGIN
 	    EXCEPTION
 	      WHEN NO_DATA_FOUND THEN
 		new_invoice := true;
+		
 	  END;
+	  invoice_id := opt_invoice_id;
   END IF;
   -- calculating new sum
   BEGIN
@@ -97,6 +99,12 @@ BEGIN
     new_currency := product_row.currency_id;
   ELSE
     new_currency := opt_currency_id;
+  END IF;
+  IF new_invoice = FALSE AND opt_currency_id IS NOT NULL AND opt_currency_id != invoice_row.currency_id THEN
+    RAISE EXCEPTION 'error, change currency not allowed';
+  END IF;
+  IF new_invoice = FALSE AND opt_buyer_id IS NOT NULL AND opt_buyer_id != invoice_row.buyer_id THEN
+    RAISE EXCEPTION 'error, change buyer not allowed';
   END IF;
   IF new_invoice THEN
     new_sum := par_quantity * getSum(
@@ -118,13 +126,11 @@ BEGIN
   -- inserting invoice
   IF (new_invoice = TRUE AND opt_buyer_id IS NOT NULL)
   THEN
-
-
     BEGIN
-      EXECUTE 'INSERT INTO "invoice"(buyer_id, currency_id, sum)
-        VALUES($1, $2, $3) RETURNING id'
-        INTO new_invoice_id
-        USING opt_buyer_id, new_currency, new_sum;
+      EXECUTE 'INSERT INTO "invoice"(id, buyer_id, currency_id, sum)
+        VALUES($1, $2, $3, $4) RETURNING id'
+        INTO invoice_id
+        USING invoice_id, opt_buyer_id, new_currency, new_sum;
       EXCEPTION
           WHEN NO_DATA_FOUND THEN
             RAISE EXCEPTION 'error, check opt_buyer_id';
@@ -138,11 +144,6 @@ BEGIN
         WHEN NO_DATA_FOUND THEN
           RAISE EXCEPTION 'error while updating invoice';
     END;
-  END IF;
-  IF new_invoice THEN
-    invoice_id := new_invoice_id;
-  ELSE
-    invoice_id := invoice_row.id;
   END IF;
   -- updating product in invoice
   new_invoice_product := FALSE;

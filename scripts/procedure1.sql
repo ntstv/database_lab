@@ -23,6 +23,7 @@ CREATE OR REPLACE FUNCTION insertProduct(
 DECLARE
   id INTEGER;
   need_new BOOLEAN;
+  product_row "product"%ROWTYPE;
 BEGIN
 need_new := false;
 id := NULL;
@@ -34,7 +35,16 @@ IF opt_id IS NOT NULL THEN
         need_new := true;
         id := opt_id;
   END;
-  IF (opt_available_amount == 0 AND)
+  id := opt_id;
+END IF;
+IF (NOT need_new AND opt_price < product_row.price AND product_row.available_amount != 0) THEN
+  RAISE EXCEPTION 'error, cant reduce price with non zero product count';
+END IF;
+IF (NOT need_new AND opt_currency_id != currency_id) THEN
+  RAISE EXCEPTION 'error, cant change currency, create new entry instead'
+END IF;
+IF (NOT need_new AND (opt_price >= product_row.price OR
+    opt_price < product_row.price AND product_row.available_amount = 0)) THEN
   BEGIN
     EXECUTE 'UPDATE "product" SET
       article          = COALESCE($2, article),
@@ -47,7 +57,6 @@ IF opt_id IS NOT NULL THEN
       currency_id      = COALESCE($9, currency_id)
     WHERE id = $1' USING $1,$2,$3,$4,$5,$6,$7,$8,$9;
   END;
-  id := opt_id;
 END IF;
 IF opt_id IS NULL OR need_new = TRUE THEN
   BEGIN
@@ -55,10 +64,11 @@ IF opt_id IS NULL OR need_new = TRUE THEN
     'INSERT INTO product(id,
           article, available_amount, name, certeficate_id, packaging,
           fabricator, price, currency_id)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id' INTO id USING id,$2,$3,$4,$5,$6,$7,$8,$9;
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id'
+    INTO id
+    USING id,$2,$3,$4,$5,$6,$7,$8,$9;
    END;
 END IF;
-RAISE NOTICE 'wow % %', opt_id, need_new;
 RETURN id;
 END
 $$
