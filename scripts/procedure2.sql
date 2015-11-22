@@ -40,6 +40,10 @@ BEGIN
 END
 $$ LANGUAGE 'plpgsql';
 
+-- проблемы с DECIMAL
+-- нужна проверка валюты с накладной и товаром
+-- нужна проверка на пользователя (чтобы совпадал)
+-- 2 стрегии вставки в зависимости от ид накладной
 CREATE OR REPLACE FUNCTION addProduct(
   par_product_id INTEGER,
   par_quantity INTEGER,
@@ -111,6 +115,8 @@ BEGIN
   -- inserting invoice
   IF (new_invoice = TRUE AND opt_buyer_id IS NOT NULL)
   THEN
+    
+   
     BEGIN
       EXECUTE 'INSERT INTO "invoice"(buyer_id, currency_id, sum)
         VALUES($1, $2, $3) RETURNING id'
