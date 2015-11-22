@@ -3,18 +3,21 @@
 * Добавление товара в накладную, при этом если накладная не существует, то она
 * создается, иначе меняется сумма товара и сотав товаров. Если товар уже там
 * есть, добавляется еще; списывается со склада
+* Пытаться создавать запись с указанным id
+* Проверять валюту если указана в накладной
+* Проверять чтобы пользователь совпадал
 */
 
 BEGIN;
 
 CREATE OR REPLACE FUNCTION getSum(
-  par_value DECIMAL(9),
+  par_value DECIMAL(9, 2),
   par_date TIMESTAMP,
   par_from_currency_id CHAR(3),
   par_to_currency_id CHAR(3)
-) RETURNS DECIMAL(9) AS $$
+) RETURNS DECIMAL(20, 2) AS $$
 DECLARE
-  translated_sum DECIMAL(9);
+  translated_sum DECIMAL(9, 2);
   exchange_rate_row "exchange_rate"%ROWTYPE;
 BEGIN
   IF (par_from_currency_id = par_to_currency_id) THEN
@@ -58,7 +61,7 @@ DECLARE
   invoice_product_row "invoice_product"%ROWTYPE;
   new_invoice BOOLEAN;
   new_invoice_product BOOLEAN;
-  new_sum DECIMAL(9);
+  new_sum DECIMAL(20, 2);
   new_currency CHAR(3);
   new_invoice_id INTEGER;
   invoice_id INTEGER;
@@ -66,7 +69,7 @@ BEGIN
   IF par_quantity <= 0 THEN
      RAISE EXCEPTION 'par_quantity should be greater then zero';
   END IF;
-  new_invoice := FALSE;   
+  new_invoice := FALSE;
   IF opt_invoice_id IS NULL THEN
     new_invoice := TRUE;
   ELSE
@@ -97,14 +100,14 @@ BEGIN
   END IF;
   IF new_invoice THEN
     new_sum := par_quantity * getSum(
-      CAST(product_row.price as DECIMAl(9)),
+      CAST(product_row.price as DECIMAl(9, 2)),
       CAST(now() as TIMESTAMP),
       CAST(product_row.currency_id as CHAR(3)),
       CAST(new_currency as CHAR(3))
     );
   ELSE
     new_sum := invoice_row.sum + CAST(par_quantity * getSum(
-      CAST(product_row.price AS DECIMAL(9)),
+      CAST(product_row.price AS DECIMAL(9, 2)),
       CAST(invoice_row.created_at AS TIMESTAMP),
       CAST(product_row.currency_id as CHAR(3)),
       CAST(invoice_row.currency_id as CHAR(3))
@@ -115,8 +118,8 @@ BEGIN
   -- inserting invoice
   IF (new_invoice = TRUE AND opt_buyer_id IS NOT NULL)
   THEN
-    
-   
+
+
     BEGIN
       EXECUTE 'INSERT INTO "invoice"(buyer_id, currency_id, sum)
         VALUES($1, $2, $3) RETURNING id'

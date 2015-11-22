@@ -61,7 +61,7 @@ CREATE TABLE "exchange_rate" (
   numerator CHAR(3) NOT NULL, --FK
   denominator CHAR(3) NOT NULL, --FK
   created_at TIMESTAMP NOT NULL DEFAULT now(),
-  value DECIMAL(6,2) NOT NULL,
+  value DECIMAL(6, 2) NOT NULL,
 
   CHECK (value > 0),
   CHECK (numerator != denominator),
@@ -80,7 +80,7 @@ CREATE TABLE "exchange_rate" (
 CREATE TABLE "payment_order" ( -- E6
   id SERIAL PRIMARY KEY,
   order_id CHAR(20) NOT NULL UNIQUE,
-  sum DECIMAL(20) NOT NULL,
+  sum DECIMAL(20, 2) NOT NULL,
   sender INTEGER NOT NULL, -- FK
   destination INTEGER NOT NULL, -- FK
   currency_id CHAR(3) NOT NULL, -- FK
@@ -115,7 +115,7 @@ CREATE TABLE "product" ( -- E7
   certeficate_id CHAR(20) NULL,
   packaging VARCHAR(20) NOT NULL,
   fabricator VARCHAR(60) NOT NULL,
-  price DECIMAL(9) NOT NULL,
+  price DECIMAL(9, 2) NOT NULL,
   currency_id CHAR(3) NOT NULL, -- FK
 
   CHECK (available_amount >= 0),
@@ -132,7 +132,7 @@ CREATE TABLE "invoice" ( --E8
   buyer_id INTEGER NOT NULL, -- FK
   currency_id CHAR(3) NOT NULL, -- FK
   created_at TIMESTAMP NOT NULL DEFAULT now(),
-  sum DECIMAL(20) NOT NULL,
+  sum DECIMAL(20, 2) NOT NULL,
 
   CHECK (sum > 0),
 

@@ -1,5 +1,10 @@
 ﻿/**
 * Процедура добавления товара
+* Если указан id создать или обновить запись
+* Если не указан id, то создать
+* Если при обновлении цена больше старой, то обновить цену на новую
+* Если при обновлении цена меньше старой и количество равно нулю, то обновить
+* цену, иначе отклонить
 */
 
 BEGIN;
@@ -12,7 +17,7 @@ CREATE OR REPLACE FUNCTION insertProduct(
   opt_certeficate_id CHAR(20),
   opt_packaging VARCHAR(20),
   opt_fabricator VARCHAR(60),
-  opt_price DECIMAL(9,2),
+  opt_price DECIMAL(9, 2),
   opt_currency_id CHAR(3)
 ) RETURNS INTEGER AS $$
 DECLARE
@@ -27,11 +32,11 @@ IF opt_id IS NOT NULL THEN
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
         need_new := true;
-        id := opt_id;      
+        id := opt_id;
   END;
   IF (opt_available_amount == 0 AND)
   BEGIN
-    EXECUTE 'UPDATE "product" SET 
+    EXECUTE 'UPDATE "product" SET
       article          = COALESCE($2, article),
       available_amount = COALESCE($3, available_amount),
       name             = COALESCE($4, name),
@@ -43,10 +48,10 @@ IF opt_id IS NOT NULL THEN
     WHERE id = $1' USING $1,$2,$3,$4,$5,$6,$7,$8,$9;
   END;
   id := opt_id;
-END IF;  
+END IF;
 IF opt_id IS NULL OR need_new = TRUE THEN
   BEGIN
-  EXECUTE  
+  EXECUTE
     'INSERT INTO product(id,
           article, available_amount, name, certeficate_id, packaging,
           fabricator, price, currency_id)
@@ -54,7 +59,7 @@ IF opt_id IS NULL OR need_new = TRUE THEN
    END;
 END IF;
 RAISE NOTICE 'wow % %', opt_id, need_new;
-RETURN id;    
+RETURN id;
 END
 $$
   LANGUAGE 'plpgsql';
