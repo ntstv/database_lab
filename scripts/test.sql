@@ -1,0 +1,1 @@
+﻿SELECT addProduct(19, 1, null, 4, 'EUR');

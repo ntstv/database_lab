@@ -9,6 +9,17 @@
 
 BEGIN;
 
+CREATE OR REPLACE FUNCTION getMaxProductId() RETURNS INTEGER AS $$
+DECLARE
+  id INTEGER;
+BEGIN
+  BEGIN
+	EXECUTE 'SELECT id FROM "product" ORDER BY id DESC LIMIT 1' INTO STRICT id;
+  END;
+  RETURN id;
+END
+ $$ LANGUAGE 'plpgsql';
+
 CREATE OR REPLACE FUNCTION insertProduct(
   opt_id INTEGER,
   opt_article CHAR(20),
@@ -40,8 +51,8 @@ END IF;
 IF (NOT need_new AND opt_price < product_row.price AND product_row.available_amount != 0) THEN
   RAISE EXCEPTION 'error, cant reduce price with non zero product count';
 END IF;
-IF (NOT need_new AND opt_currency_id != currency_id) THEN
-  RAISE EXCEPTION 'error, cant change currency, create new entry instead'
+IF (NOT need_new AND opt_currency_id != product_row.currency_id) THEN
+  RAISE EXCEPTION 'error, cant change currency, create new entry instead';
 END IF;
 IF (NOT need_new AND (opt_price >= product_row.price OR
     opt_price < product_row.price AND product_row.available_amount = 0)) THEN
@@ -64,9 +75,9 @@ IF opt_id IS NULL OR need_new = TRUE THEN
     'INSERT INTO product(id,
           article, available_amount, name, certeficate_id, packaging,
           fabricator, price, currency_id)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id'
+    VALUES (COALESCE($1,$10), $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id'
     INTO id
-    USING id,$2,$3,$4,$5,$6,$7,$8,$9;
+    USING id,$2,$3,$4,$5,$6,$7,$8,$9,getMaxProductId() + 1;
    END;
 END IF;
 RETURN id;

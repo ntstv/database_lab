@@ -10,6 +10,17 @@
 
 BEGIN;
 
+CREATE OR REPLACE FUNCTION getMaxInoviceId() RETURNS INTEGER AS $$
+DECLARE
+  id INTEGER;
+BEGIN
+  BEGIN
+  EXECUTE 'SELECT id FROM "invoice" ORDER BY id DESC LIMIT 1' INTO STRICT id;
+  RETURN id;
+  END;
+END
+ $$ LANGUAGE 'plpgsql';
+
 CREATE OR REPLACE FUNCTION getSum(
   par_value DECIMAL(9, 2),
   par_date TIMESTAMP,
@@ -24,6 +35,7 @@ BEGIN
     translated_sum := par_value;
   ELSE
     BEGIN
+      -- RAISE NOTICE 'date % % %',par_from_currency_id,par_to_currency_id, par_date;
       EXECUTE
         'SELECT * FROM "exchange_rate"
           WHERE numerator = $1 AND
@@ -43,10 +55,6 @@ BEGIN
 END
 $$ LANGUAGE 'plpgsql';
 
--- проблемы с DECIMAL
--- нужна проверка валюты с накладной и товаром
--- нужна проверка на пользователя (чтобы совпадал)
--- 2 стрегии вставки в зависимости от ид накладной
 CREATE OR REPLACE FUNCTION addProduct(
   par_product_id INTEGER,
   par_quantity INTEGER,
@@ -79,7 +87,7 @@ BEGIN
 	    EXCEPTION
 	      WHEN NO_DATA_FOUND THEN
 		new_invoice := true;
-		
+
 	  END;
 	  invoice_id := opt_invoice_id;
   END IF;
@@ -110,15 +118,15 @@ BEGIN
     new_sum := par_quantity * getSum(
       CAST(product_row.price as DECIMAl(9, 2)),
       CAST(now() as TIMESTAMP),
-      CAST(product_row.currency_id as CHAR(3)),
-      CAST(new_currency as CHAR(3))
+      CAST(new_currency as CHAR(3)),
+      CAST(product_row.currency_id as CHAR(3))
     );
   ELSE
     new_sum := invoice_row.sum + CAST(par_quantity * getSum(
       CAST(product_row.price AS DECIMAL(9, 2)),
       CAST(invoice_row.created_at AS TIMESTAMP),
-      CAST(product_row.currency_id as CHAR(3)),
-      CAST(invoice_row.currency_id as CHAR(3))
+      CAST(invoice_row.currency_id as CHAR(3)),
+      CAST(product_row.currency_id as CHAR(3))
     ) as DECIMAL(20));
     new_currency := invoice_row.currency_id;
   END IF;
@@ -128,9 +136,9 @@ BEGIN
   THEN
     BEGIN
       EXECUTE 'INSERT INTO "invoice"(id, buyer_id, currency_id, sum)
-        VALUES($1, $2, $3, $4) RETURNING id'
+        VALUES(COALESCE($1, $5), $2, $3, $4) RETURNING id'
         INTO invoice_id
-        USING invoice_id, opt_buyer_id, new_currency, new_sum;
+        USING invoice_id, opt_buyer_id, new_currency, new_sum, getMaxInoviceId() + 1;
       EXCEPTION
           WHEN NO_DATA_FOUND THEN
             RAISE EXCEPTION 'error, check opt_buyer_id';
