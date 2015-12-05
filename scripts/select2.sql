@@ -13,8 +13,8 @@
 
 
 SELECT
-  S0.name,
-  S0.category,
+  S0.name as "название фирмы покупателя",
+  S0.category as "категория",
   (
     SELECT count(invoice.id)
     FROM invoice
@@ -22,7 +22,7 @@ SELECT
     ON invoice.id = payment_order.invoice_id
     WHERE invoice.buyer_id = S0.id AND
       payment_order.invoice_id is NULL
-  ) as debt_count,
+  ) as "количество неоплаченных накладных",
   (
     SELECT sum(getSum(invoice.sum, now()::TIMESTAMP, invoice.currency_id, 'РУБ'))
     FROM invoice
@@ -30,7 +30,7 @@ SELECT
     ON invoice.id = payment_order.invoice_id
     WHERE invoice.buyer_id = S0.id AND
       payment_order.invoice_id IS NULL
-  ) as "debt sum (руб)",
+  ) as "сумма задолженности (рубли)",
   (
     SELECT invoice.created_at
     FROM invoice
@@ -40,12 +40,12 @@ SELECT
       payment_order.invoice_id IS NULL
     ORDER BY invoice.created_at ASC
     LIMIT 1
-  ) as date,
+  ) as "дата оформления ранней неоплаченной накладной",
   (
     SELECT count(invoice.id)
     FROM invoice
     WHERE invoice.buyer_id = S0.id
-  ) as total_purchases,
+  ) as "общее количество покупок за все время",
   (
     SELECT invoice.currency_id
     FROM invoice
@@ -53,5 +53,5 @@ SELECT
     GROUP BY invoice.currency_id
     ORDER BY count(invoice.currency_id) DESC
     LIMIT 1
-  ) as most_used_currency
+  ) as "наиболее часто используемая валюта"
 FROM buyer as S0

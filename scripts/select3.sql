@@ -12,18 +12,18 @@
 */
 
 SELECT
-  S0.name,
-  S0.article,
+  S0.name as "название товара",
+  S0.article as "артикул",
   (
       SELECT sum(invoice_product.product_id * invoice_product.quantity) + S0.available_amount
       FROM invoice_product
       WHERE invoice_product.product_id = S0.id
-  ) as "total_count",
+  ) as "общее количество которое было на складе",
   (
       SELECT sum(invoice_product.product_id * invoice_product.quantity)
       FROM invoice_product
       WHERE invoice_product.product_id = S0.id
-  ) as "sold_count",
+  ) as "количество проданных товаров",
   format('%s %s', S0.price, S0.currency_id) as price,
   (
       SELECT invoice.created_at FROM product
@@ -32,7 +32,10 @@ SELECT
       WHERE product.id = S0.id
       ORDER BY invoice.created_at DESC
       LIMIT 1
-  ) as last_sold,
+  ) as "цена товара + денежная единица",
+  (
+     SELECT invoice.created_at
+  ),
   COALESCE(
     (
       SELECT buyer.name
@@ -45,7 +48,7 @@ SELECT
       LIMIT 1
     ),
     'No buyer'
-  ) as most_buyer
+  ) as "фирма покупатель, которая чаще всего покупала"
 
 FROM product as S0
 LIMIT 5;
