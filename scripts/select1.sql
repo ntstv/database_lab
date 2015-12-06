@@ -19,7 +19,7 @@ SELECT
     SELECT product.name FROM product
     JOIN invoice_product ON product.id = invoice_product.product_id
     JOIN invoice ON invoice.id = invoice_product.invoice_id
-    WHERE invoice.buyer_id = S0.id AND invoice.created_at <= now() AND invoice.created_at >= now() - interval '1 year'
+    WHERE invoice.buyer_id = S0.id AND invoice.created_at <= now() AND invoice.created_at >= (now() - interval '1 year')
     GROUP BY product.id
     ORDER BY count(product.id) DESC
     LIMIT 1
@@ -29,7 +29,7 @@ SELECT
     FROM product
     JOIN invoice_product ON invoice_product.product_id = product.id
     JOIN invoice ON invoice_product.invoice_id = invoice.id
-    WHERE invoice.buyer_id = S0.id
+    WHERE invoice.buyer_id = S0.id AND invoice.created_at <= now() AND invoice.created_at >= (now() - interval '1 year')
     ORDER BY count(product.id) DESC
     LIMIT 1
   ) as "количество самого покупаемого товара за год",
@@ -37,20 +37,20 @@ SELECT
     SELECT sum(getSum(product.price, now()::TIMESTAMP, product.currency_id, 'РУБ')) FROM invoice_product
     JOIN product ON invoice_product.product_id = product.id
     JOIN invoice ON invoice_product.invoice_id = invoice.id
-    WHERE invoice.buyer_id = S0.id
+    WHERE invoice.buyer_id = S0.id AND invoice.created_at <= now() AND invoice.created_at >= (now() - interval '1 year')
   ) as "стоимость купленного товара"
 
 FROM buyer as S0
 
-JOIN (
+LEFT OUTER JOIN (
   SELECT invoice.buyer_id, sum(getSum(invoice.sum, now()::TIMESTAMP, invoice.currency_id, 'РУБ'))
   FROM invoice
   LEFT OUTER JOIN payment_order
   ON invoice.id = payment_order.invoice_id
   WHERE
-    payment_order.invoice_id is NOT NULL
+    payment_order.invoice_id is NOT NULL AND invoice.created_at <= now() AND invoice.created_at >= (now() - interval '1 year')
   GROUP BY invoice.buyer_id
 ) as S1
 ON S0.id = S1.buyer_id
-ORDER BY "стоимость купленного товара" DESC
+ORDER BY S1.sum DESC
 LIMIT 3

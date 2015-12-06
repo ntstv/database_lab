@@ -15,14 +15,7 @@
 SELECT
   S0.name as "название фирмы покупателя",
   S0.category as "категория",
-  (
-    SELECT count(invoice.id)
-    FROM invoice
-    LEFT OUTER JOIN payment_order
-    ON invoice.id = payment_order.invoice_id
-    WHERE invoice.buyer_id = S0.id AND
-      payment_order.invoice_id is NULL
-  ) as "количество неоплаченных накладных",
+  S1.count as "количество неоплаченных накладных",
   (
     SELECT sum(getSum(invoice.sum, now()::TIMESTAMP, invoice.currency_id, 'РУБ'))
     FROM invoice
@@ -55,3 +48,11 @@ SELECT
     LIMIT 1
   ) as "наиболее часто используемая валюта"
 FROM buyer as S0
+LEFT OUTER JOIN (
+  SELECT buyer.id, sum(case when payment_order.invoice_id is NULL THEN 1 ELSE 0 end) as count FROM buyer
+  LEFT OUTER JOIN invoice ON invoice.buyer_id = buyer.id
+  LEFT JOIN payment_order ON payment_order.invoice_id = invoice.id
+  GROUP BY buyer.id
+) as S1
+ON S0.id = S1.id
+WHERE S1.count > 0

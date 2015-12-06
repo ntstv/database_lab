@@ -1,5 +1,5 @@
 ﻿/**
-* Послучать 5 наиболее плохо продаваемых товаров след. вида
+* Получать 5 наиболее плохо продаваемых товаров след. вида
 * ================================================================================
 * название товара
 * артикул
@@ -14,16 +14,12 @@
 SELECT
   S0.name as "название товара",
   S0.article as "артикул",
-  (
+  COALESCE((
       SELECT sum(invoice_product.product_id * invoice_product.quantity) + S0.available_amount
       FROM invoice_product
       WHERE invoice_product.product_id = S0.id
-  ) as "общее количество которое было на складе",
-  (
-      SELECT sum(invoice_product.product_id * invoice_product.quantity)
-      FROM invoice_product
-      WHERE invoice_product.product_id = S0.id
-  ) as "количество проданных товаров",
+  ), 0) as "общее количество которое было на складе",
+  COALESCE(S1.sum, 0) as "количество проданных товаров",
   format('%s %s', S0.price, S0.currency_id) as price,
   (
       SELECT invoice.created_at FROM product
@@ -35,7 +31,12 @@ SELECT
   ) as "цена товара + денежная единица",
   (
      SELECT invoice.created_at
-  ),
+     FROM invoice
+     JOIN invoice_product ON invoice_product.invoice_id = invoice.id
+     WHERE invoice_product.product_id = S0.id
+     ORDER BY invoice.created_at DESC
+     LIMIT 1
+  ) as "дата последней продажи",
   COALESCE(
     (
       SELECT buyer.name
@@ -51,4 +52,11 @@ SELECT
   ) as "фирма покупатель, которая чаще всего покупала"
 
 FROM product as S0
-LIMIT 5;
+LEFT OUTER JOIN (
+   SELECT invoice_product.product_id, sum(invoice_product.product_id * invoice_product.quantity)
+   FROM invoice_product
+   GROUP BY invoice_product.product_id
+) as S1
+ON S1.product_id = S0.id
+ORDER BY COALESCE(S1.sum, 0) ASC
+LIMIT 15;
