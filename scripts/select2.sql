@@ -35,7 +35,7 @@ SELECT
     LIMIT 1
   ) as "дата оформления ранней неоплаченной накладной",
   (
-    SELECT count(invoice.id)
+    SELECT (count(invoice.id)-S1.count)
     FROM invoice
     WHERE invoice.buyer_id = S0.id
   ) as "общее количество покупок за все время",

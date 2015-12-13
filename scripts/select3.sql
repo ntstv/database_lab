@@ -18,25 +18,18 @@ SELECT
       SELECT sum(invoice_product.product_id * invoice_product.quantity) + S0.available_amount
       FROM invoice_product
       WHERE invoice_product.product_id = S0.id
-  ), 0) as "общее количество которое было на складе",
+  ), 0) + S0.available_amount
+  as "общее количество которое было на складе",
   COALESCE(S1.sum, 0) as "количество проданных товаров",
-  format('%s %s', S0.price, S0.currency_id) as price,
-  (
-      SELECT invoice.created_at FROM product
-      JOIN invoice_product ON product.id = invoice_product.product_id
-      JOIN invoice ON invoice.id = invoice_product.invoice_id
-      WHERE product.id = S0.id
-      ORDER BY invoice.created_at DESC
-      LIMIT 1
-  ) as "цена товара + денежная единица",
-  (
+  format('%s %s', S0.price, S0.currency_id) as "цена товара + денежная единица",
+  COALESCE((
      SELECT invoice.created_at
      FROM invoice
      JOIN invoice_product ON invoice_product.invoice_id = invoice.id
      WHERE invoice_product.product_id = S0.id
      ORDER BY invoice.created_at DESC
      LIMIT 1
-  ) as "дата последней продажи",
+  )::VARCHAR(255),'Не было продаж') as "дата последней продажи",
   COALESCE(
     (
       SELECT buyer.name
@@ -59,4 +52,4 @@ LEFT OUTER JOIN (
 ) as S1
 ON S1.product_id = S0.id
 ORDER BY COALESCE(S1.sum, 0) ASC
-LIMIT 15;
+LIMIT 5;
